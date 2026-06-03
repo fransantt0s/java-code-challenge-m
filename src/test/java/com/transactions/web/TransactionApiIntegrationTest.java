@@ -91,4 +91,16 @@ class TransactionApiIntegrationTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("validation_error"));
     }
+
+    @Test
+    void wrongParentFieldNameIsRejectedInsteadOfSilentlyIgnored() throws Exception {
+        // El contrato es parent_id (snake_case). Un campo mal escrito (camelCase)
+        // debe fallar fuerte, no ignorarse en silencio dejando al hijo huérfano.
+        putTransaction(80L, "{\"amount\":1,\"type\":\"x\"}");
+        mockMvc.perform(put("/transactions/{id}", 81L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amount\":1,\"type\":\"x\",\"parentId\":80}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("malformed_request"));
+    }
 }
