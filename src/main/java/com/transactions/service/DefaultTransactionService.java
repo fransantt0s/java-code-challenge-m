@@ -5,16 +5,21 @@ import com.transactions.repository.TransactionRepository;
 import com.transactions.service.exception.ParentImmutableException;
 import com.transactions.service.exception.ParentNotFoundException;
 import com.transactions.service.exception.TransactionNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class DefaultTransactionService implements TransactionService {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultTransactionService.class);
 
     private static final int STRIPES = 64;
 
@@ -41,16 +46,23 @@ public class DefaultTransactionService implements TransactionService {
 
         ReentrantLock lock = lockFor(transaction.id());
         lock.lock();
+        boolean replaced;
         try {
-            repository.findById(transaction.id()).ifPresent(existing -> {
-                if (!Objects.equals(existing.parentId(), transaction.parentId())) {
-                    throw new ParentImmutableException(transaction.id());
-                }
-            });
+            Optional<Transaction> existing = repository.findById(transaction.id());
+            if (existing.isPresent()
+                    && !Objects.equals(existing.get().parentId(), transaction.parentId())) {
+                throw new ParentImmutableException(transaction.id());
+            }
+            replaced = existing.isPresent();
             repository.save(transaction);
         } finally {
             lock.unlock();
         }
+
+        log.info("Transacción {} {} (type={})",
+                transaction.id(), replaced ? "reemplazada" : "creada", transaction.type());
+        log.debug("Detalle transacción {}: amount={}, parentId={}",
+                transaction.id(), transaction.amount(), transaction.parentId());
     }
 
     @Override
@@ -64,6 +76,7 @@ public class DefaultTransactionService implements TransactionService {
             throw new TransactionNotFoundException(id);
         }
 
+        log.debug("Calculando suma transitiva para {}", id);
         double total = 0d;
         Deque<Long> stack = new ArrayDeque<>();
         stack.push(id);
@@ -72,6 +85,7 @@ public class DefaultTransactionService implements TransactionService {
             total += repository.findById(current).map(Transaction::amount).orElse(0d);
             stack.addAll(repository.findChildrenIds(current));
         }
+        log.debug("Suma transitiva de {} = {}", id, total);
         return total;
     }
 }
