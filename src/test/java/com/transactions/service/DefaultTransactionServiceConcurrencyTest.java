@@ -25,7 +25,6 @@ class DefaultTransactionServiceConcurrencyTest {
         }
         pool.shutdown();
         assertThat(pool.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
-
         // root(0) + 1000 hijos de monto 1 => 1000
         assertThat(service.sum(0L)).isEqualTo(1_000d);
         assertThat(service.findIdsByType("leaf")).hasSize(children);

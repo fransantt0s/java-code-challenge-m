@@ -20,7 +20,6 @@ import java.util.concurrent.locks.ReentrantLock;
 public class DefaultTransactionService implements TransactionService {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultTransactionService.class);
-
     private static final int STRIPES = 64;
 
     private final TransactionRepository repository;
@@ -43,7 +42,6 @@ public class DefaultTransactionService implements TransactionService {
         if (transaction.parentId() != null && !repository.existsById(transaction.parentId())) {
             throw new ParentNotFoundException(transaction.parentId());
         }
-
         ReentrantLock lock = lockFor(transaction.id());
         lock.lock();
         boolean replaced;
@@ -58,7 +56,6 @@ public class DefaultTransactionService implements TransactionService {
         } finally {
             lock.unlock();
         }
-
         log.info("Transacción {} {} (type={})",
                 transaction.id(), replaced ? "reemplazada" : "creada", transaction.type());
         log.debug("Detalle transacción {}: amount={}, parentId={}",
@@ -75,7 +72,6 @@ public class DefaultTransactionService implements TransactionService {
         if (!repository.existsById(id)) {
             throw new TransactionNotFoundException(id);
         }
-
         log.debug("Calculando suma transitiva para {}", id);
         double total = 0d;
         Deque<Long> stack = new ArrayDeque<>();
