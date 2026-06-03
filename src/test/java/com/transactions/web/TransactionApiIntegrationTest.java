@@ -93,6 +93,13 @@ class TransactionApiIntegrationTest {
     }
 
     @Test
+    void nonNumericIdReturns400() throws Exception {
+        mockMvc.perform(get("/transactions/sum/abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("validation_error"));
+    }
+
+    @Test
     void wrongParentFieldNameIsRejectedInsteadOfSilentlyIgnored() throws Exception {
         // El contrato es parent_id (snake_case). Un campo mal escrito (camelCase)
         // debe fallar fuerte, no ignorarse en silencio dejando al hijo huérfano.
