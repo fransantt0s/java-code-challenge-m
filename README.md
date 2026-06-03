@@ -44,6 +44,15 @@ docker run --rm -p 8080:8080 transactions-challenge
 .\mvnw.cmd test      # Windows
 ```
 
+La suite cubre los tres niveles de la pirámide:
+
+- **Unitarios:** repositorio en memoria, servicio (reglas de negocio y suma
+  transitiva) y un test de concurrencia.
+- **Integración:** la API completa con MockMvc (contexto Spring real), incluyendo
+  el ejemplo del enunciado y los casos de error.
+- **E2E:** servidor embebido en un puerto real al que se le pega por HTTP con un
+  cliente real (serialización JSON y socket de verdad).
+
 ## Documentación interactiva (Swagger / OpenAPI)
 
 Con la app levantada, los endpoints se pueden explorar y ejecutar desde el
@@ -122,8 +131,21 @@ curl http://localhost:8080/transactions/sum/10
 |---|---|---|
 | OK | 200 | — |
 | Body inválido (falta `amount`, `type` vacío) | 400 | `validation_error` |
+| JSON malformado o con campos desconocidos | 400 | `malformed_request` |
 | `sum` de una transacción inexistente | 404 | `transaction_not_found` |
 | Intento de cambiar `parent_id` | 409 | `parent_immutable` |
 | `parent_id` no existe | 422 | `parent_not_found` |
 
 Los errores responden `{ "error": "...", "message": "..." }`.
+
+## Observabilidad
+
+Logging con SLF4J/Logback (ya incluido en Spring Boot):
+
+- **INFO** — alta/reemplazo de transacciones (id, acción y tipo).
+- **DEBUG** — cálculo de `sum` y montos (los importes no se registran en INFO,
+  por criterio de no exponer datos sensibles en logs operativos).
+- **WARN** — errores de cliente (4xx) con su motivo.
+
+Para ver el detalle de nivel DEBUG, agregar a `application.properties`:
+`logging.level.com.transactions=DEBUG`.
